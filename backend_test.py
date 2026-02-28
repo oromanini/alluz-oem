@@ -219,7 +219,7 @@ class AlluzAPITester:
             "badge": "Teste"
         }
         
-        create_success, create_response = self.run_test("Create Plan", "POST", "admin/plans", 201, test_plan)
+        create_success, create_response = self.run_test("Create Plan", "POST", "admin/plans", 200, test_plan)
         
         if create_success and 'id' in create_response:
             plan_id = create_response['id']
