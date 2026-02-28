@@ -336,58 +336,115 @@ const LandingPage = () => {
       </section>
 
       {/* Planos Section */}
-      <section id="planos" className="py-16 md:py-24 bg-gray-50">
+      <section id="planos" className="py-20 md:py-32 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Escolha seu plano</h2>
-            <p className="text-lg text-gray-600">Acompanhamento profissional para seu sistema solar</p>
+            <span className="text-amber-500 font-semibold text-sm uppercase tracking-wider mb-4 block">Planos</span>
+            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">Escolha o plano ideal para você</h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              Experimente o <span className="text-amber-500 font-medium">plano básico por 14 dias</span> e descubra como aumentar 
+              instantaneamente as suas conversões!
+            </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan, index) => (
-              <div 
-                key={plan.id}
-                className={`bg-white p-8 rounded-2xl border-2 flex flex-col h-full transition-all hover:scale-[1.02] ${
-                  plan.destaque 
-                    ? 'border-amber-500 shadow-[0_0_30px_-5px_rgba(245,158,11,0.3)] relative' 
-                    : 'border-gray-200 shadow-lg hover:border-amber-300'
-                }`}
-                data-testid={`plan-card-${index}`}
-              >
-                {plan.badge && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-amber-500 text-white text-sm font-semibold px-4 py-1 rounded-full">
-                      {plan.badge}
-                    </span>
-                  </div>
-                )}
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.nome}</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">{plan.preco.split('/')[0]}</span>
-                    <span className="text-gray-500">/{plan.preco.split('/')[1] || 'mês'}</span>
+          
+          {/* Plans Grid with elevated middle card */}
+          <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-6 max-w-6xl mx-auto">
+            {plans.sort((a, b) => a.ordem - b.ordem).map((plan, index) => {
+              const isHighlighted = plan.destaque;
+              
+              return (
+                <div 
+                  key={plan.id}
+                  className={`relative w-full lg:w-[340px] flex flex-col transition-all duration-500 ${
+                    isHighlighted 
+                      ? 'lg:-mt-8 lg:mb-8 z-10' 
+                      : 'z-0'
+                  }`}
+                  data-testid={`plan-card-${index}`}
+                >
+                  <div 
+                    className={`flex flex-col h-full rounded-3xl overflow-hidden transition-all duration-300 ${
+                      isHighlighted
+                        ? 'bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 text-white shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/40'
+                        : 'bg-white border border-gray-200 shadow-lg hover:shadow-xl hover:border-amber-200'
+                    }`}
+                  >
+                    {/* Card Header */}
+                    <div className={`p-8 pb-6 ${isHighlighted ? '' : ''}`}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <h3 className={`text-2xl font-bold ${isHighlighted ? 'text-white' : 'text-amber-500'}`}>
+                          {plan.nome.replace('Plano ', '')}
+                        </h3>
+                        {plan.badge && (
+                          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                            isHighlighted 
+                              ? 'bg-white/20 text-white' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {plan.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-sm mb-6 ${isHighlighted ? 'text-white/80' : 'text-gray-500'}`}>
+                        {isHighlighted 
+                          ? 'Ideal para empresas em crescimento que buscam maior performance'
+                          : index === 0 
+                            ? 'Para quem está começando e quer validar suas primeiras campanhas'
+                            : 'Perfeito para quem deseja acompanhamento completo com alta redução de tarifas'
+                        }
+                      </p>
+                      
+                      {/* Price */}
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-5xl font-bold ${isHighlighted ? 'text-white' : 'text-gray-900'}`}>
+                          {plan.preco.split('/')[0]}
+                        </span>
+                        <span className={`text-lg ${isHighlighted ? 'text-white/70' : 'text-gray-400'}`}>
+                          /{plan.preco.split('/')[1] || 'mês'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Features List */}
+                    <div className={`px-8 pb-8 flex-grow ${isHighlighted ? '' : ''}`}>
+                      <p className={`text-sm font-semibold mb-4 ${isHighlighted ? 'text-white/90' : 'text-gray-700'}`}>
+                        O que está incluso
+                      </p>
+                      <ul className="space-y-3">
+                        {plan.descricao.map((item, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                              isHighlighted ? 'bg-white/20' : 'bg-amber-100'
+                            }`}>
+                              <Check className={`w-3 h-3 ${isHighlighted ? 'text-white' : 'text-amber-600'}`} />
+                            </div>
+                            <span className={`text-sm ${isHighlighted ? 'text-white/90' : 'text-gray-600'}`}>
+                              {item}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* CTA Button */}
+                    <div className="px-8 pb-8 mt-auto">
+                      <Button 
+                        onClick={() => openFormWithPlan(plan.nome)}
+                        className={`w-full py-6 text-base font-semibold rounded-xl transition-all group ${
+                          isHighlighted
+                            ? 'bg-white text-orange-600 hover:bg-gray-100 shadow-lg'
+                            : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg'
+                        }`}
+                        data-testid={`plan-cta-${index}`}
+                      >
+                        {isHighlighted ? 'Iniciar hoje' : 'Testar Grátis'}
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <ul className="space-y-4 mb-8 flex-grow">
-                  {plan.descricao.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-600">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  onClick={() => openFormWithPlan(plan.nome)}
-                  className={`w-full py-6 text-lg font-semibold rounded-xl transition-all ${
-                    plan.destaque
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg hover:shadow-xl'
-                      : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  }`}
-                  data-testid={`plan-cta-${index}`}
-                >
-                  Assinar este plano
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
