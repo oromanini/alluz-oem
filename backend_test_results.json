@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-02-28T18:33:47.417030",
+  "total_tests": 24,
+  "passed_tests": 22,
+  "success_rate": 0.9166666666666666,
+  "results": [
+    {
+      "test": "API Root",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Site Content",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Content contains hero_titulo",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Content contains hero_subtitulo",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Content contains whatsapp_numero",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Plans",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Plans count (>=3)",
+      "success": true,
+      "details": "Found 3 plans"
+    },
+    {
+      "test": "Plan 1 structure",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Plan 2 structure",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Plan 3 structure",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Create Lead",
+      "success": false,
+      "details": "Expected 201, got 200 - {\"id\":\"3ab22528-4708-4190-b9b7-43a62a1a9f00\",\"nome\":\"Test Lead 183346\",\"empresa\":\"Test Company 183346\",\"telefone\":\"44999887766\",\"cidade\":\"Maring\u00e1\",\"plano\":\"Plano Essencial\",\"potencia\":\"10 kWp\",\"conces"
+    },
+    {
+      "test": "Admin Login",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Token received",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Auth User",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "User info contains username",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Get Admin Leads",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Leads response is array",
+      "success": true,
+      "details": "Found 1 leads"
+    },
+    {
+      "test": "Export Leads CSV",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "CSV export contains data",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Update Content",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Verify Content Update",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Content update verified",
+      "success": true,
+      "details": ""
+    },
+    {
+      "test": "Create Plan",
+      "success": false,
+      "details": "Expected 201, got 200 - {\"id\":\"8308291c-6e87-4f06-8449-8a5c68385f8e\",\"nome\":\"Plano Teste API\",\"preco\":\"R$ 19,90/m\u00eas\",\"descricao\":[\"Teste de API\",\"Funcionalidade completa\"],\"ordem\":99,\"destaque\":false,\"badge\":\"Teste\"}"
+    },
+    {
+      "test": "Update WhatsApp Config",
+      "success": true,
+      "details": ""
+    }
+  ]
+}
