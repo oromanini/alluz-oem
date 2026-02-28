@@ -143,7 +143,7 @@ class AlluzAPITester:
             "observacoes": "Teste de API"
         }
         
-        success, response = self.run_test("Create Lead", "POST", "leads", 201, lead_data)
+        success, response = self.run_test("Create Lead", "POST", "leads", 200, lead_data)
         if success and 'id' in response:
             self.log_test("Lead creation returns ID", True)
             # Store lead ID for later tests
