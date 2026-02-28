@@ -4,12 +4,13 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
+import ssl
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
-import aiosqlite
+import aiomysql
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import json
@@ -31,7 +32,28 @@ rate_limit_store = defaultdict(list)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_MAX = 5
 
-DB_PATH = ROOT_DIR / "alluz.db"
+db_pool = None
+
+
+def get_mysql_config():
+    return {
+        "host": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+        "port": int(os.environ.get("MYSQL_PORT", "3306")),
+        "user": os.environ.get("MYSQL_USER"),
+        "password": os.environ.get("MYSQL_PASSWORD"),
+        "db": os.environ.get("MYSQL_DATABASE"),
+    }
+
+
+def get_mysql_ssl_context():
+    if os.environ.get("MYSQL_SSL_DISABLED", "false").lower() == "true":
+        return None
+
+    ca_path = os.environ.get("MYSQL_SSL_CA")
+    if ca_path:
+        return ssl.create_default_context(cafile=ca_path)
+    return None
+
 
 # Create the main app
 app = FastAPI(title="Alluz Energia API")
@@ -104,63 +126,64 @@ class WhatsAppConfig(BaseModel):
 
 # Database initialization
 async def init_db():
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute('''
-            CREATE TABLE IF NOT EXISTS admins (
-                id TEXT PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
-        await db.execute('''
-            CREATE TABLE IF NOT EXISTS leads (
-                id TEXT PRIMARY KEY,
-                nome TEXT NOT NULL,
-                empresa TEXT NOT NULL,
-                telefone TEXT NOT NULL,
-                cidade TEXT NOT NULL,
-                plano TEXT NOT NULL,
-                potencia TEXT,
-                concessionaria TEXT,
-                observacoes TEXT,
-                status TEXT DEFAULT 'novo',
-                created_at TEXT NOT NULL
-            )
-        ''')
-        await db.execute('''
-            CREATE TABLE IF NOT EXISTS plans (
-                id TEXT PRIMARY KEY,
-                nome TEXT NOT NULL,
-                preco TEXT NOT NULL,
-                descricao TEXT NOT NULL,
-                ordem INTEGER NOT NULL,
-                destaque INTEGER DEFAULT 0,
-                badge TEXT
-            )
-        ''')
-        await db.execute('''
-            CREATE TABLE IF NOT EXISTS content (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            )
-        ''')
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute('''
+                CREATE TABLE IF NOT EXISTS admins (
+                    id VARCHAR(36) PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+            await cursor.execute('''
+                CREATE TABLE IF NOT EXISTS leads (
+                    id VARCHAR(36) PRIMARY KEY,
+                    nome VARCHAR(255) NOT NULL,
+                    empresa VARCHAR(255) NOT NULL,
+                    telefone VARCHAR(50) NOT NULL,
+                    cidade VARCHAR(255) NOT NULL,
+                    plano VARCHAR(255) NOT NULL,
+                    potencia VARCHAR(50),
+                    concessionaria VARCHAR(255),
+                    observacoes TEXT,
+                    status VARCHAR(50) DEFAULT 'novo',
+                    created_at TEXT NOT NULL
+                )
+            ''')
+            await cursor.execute('''
+                CREATE TABLE IF NOT EXISTS plans (
+                    id VARCHAR(36) PRIMARY KEY,
+                    nome VARCHAR(255) NOT NULL,
+                    preco VARCHAR(255) NOT NULL,
+                    descricao JSON NOT NULL,
+                    ordem INT NOT NULL,
+                    destaque TINYINT(1) DEFAULT 0,
+                    badge VARCHAR(255)
+                )
+            ''')
+            await cursor.execute('''
+                CREATE TABLE IF NOT EXISTS content (
+                    `key` VARCHAR(255) PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            ''')
         await db.commit()
         
         # Check if admin exists
-        cursor = await db.execute("SELECT COUNT(*) FROM admins")
+        await cursor.execute("SELECT COUNT(*) FROM admins")
         count = await cursor.fetchone()
         if count[0] == 0:
             admin_id = str(uuid.uuid4())
             password_hash = pwd_context.hash("admin123")
-            await db.execute(
-                "INSERT INTO admins (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
+            await cursor.execute(
+                "INSERT INTO admins (id, username, password_hash, created_at) VALUES (%s, %s, %s, %s)",
                 (admin_id, "admin", password_hash, datetime.now(timezone.utc).isoformat())
             )
             await db.commit()
         
         # Seed plans if empty
-        cursor = await db.execute("SELECT COUNT(*) FROM plans")
+        await cursor.execute("SELECT COUNT(*) FROM plans")
         count = await cursor.fetchone()
         if count[0] == 0:
             plans = [
@@ -205,14 +228,14 @@ async def init_db():
                 }
             ]
             for plan in plans:
-                await db.execute(
-                    "INSERT INTO plans (id, nome, preco, descricao, ordem, destaque, badge) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                await cursor.execute(
+                    "INSERT INTO plans (id, nome, preco, descricao, ordem, destaque, badge) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (plan["id"], plan["nome"], plan["preco"], plan["descricao"], plan["ordem"], plan["destaque"], plan["badge"])
                 )
             await db.commit()
         
         # Seed content if empty
-        cursor = await db.execute("SELECT COUNT(*) FROM content")
+        await cursor.execute("SELECT COUNT(*) FROM content")
         count = await cursor.fetchone()
         if count[0] == 0:
             default_content = {
@@ -250,7 +273,7 @@ async def init_db():
                 "footer_cnpj": "34.782.317/0001-49"
             }
             for key, value in default_content.items():
-                await db.execute("INSERT INTO content (key, value) VALUES (?, ?)", (key, value))
+                await cursor.execute("INSERT INTO content (`key`, value) VALUES (%s, %s)", (key, value))
             await db.commit()
 
 # JWT helpers
@@ -289,9 +312,10 @@ async def root():
 # Auth routes
 @api_router.post("/auth/login", response_model=Token)
 async def login(data: AdminLogin):
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT password_hash FROM admins WHERE username = ?", (data.username,))
-        row = await cursor.fetchone()
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT password_hash FROM admins WHERE username = %s", (data.username,))
+            row = await cursor.fetchone()
         if not row or not pwd_context.verify(data.password, row[0]):
             raise HTTPException(status_code=401, detail="Credenciais inválidas")
         access_token = create_access_token(data={"sub": data.username})
@@ -303,18 +327,20 @@ async def get_me(username: str = Depends(verify_token)):
 
 @api_router.post("/auth/change-password")
 async def change_password(data: AdminLogin, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        password_hash = pwd_context.hash(data.password)
-        await db.execute("UPDATE admins SET password_hash = ? WHERE username = ?", (password_hash, username))
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            password_hash = pwd_context.hash(data.password)
+            await cursor.execute("UPDATE admins SET password_hash = %s WHERE username = %s", (password_hash, username))
         await db.commit()
         return {"message": "Senha alterada com sucesso"}
 
 # Public content route
 @api_router.get("/content")
 async def get_all_content():
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT key, value FROM content")
-        rows = await cursor.fetchall()
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT `key`, value FROM content")
+            rows = await cursor.fetchall()
         content = {}
         for row in rows:
             content[row[0]] = row[1]
@@ -323,9 +349,10 @@ async def get_all_content():
 # Public plans route
 @api_router.get("/plans", response_model=List[PlanResponse])
 async def get_plans():
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT id, nome, preco, descricao, ordem, destaque, badge FROM plans ORDER BY ordem")
-        rows = await cursor.fetchall()
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT id, nome, preco, descricao, ordem, destaque, badge FROM plans ORDER BY ordem")
+            rows = await cursor.fetchall()
         plans = []
         for row in rows:
             plans.append({
@@ -353,10 +380,11 @@ async def create_lead(lead: LeadCreate, request: Request):
     lead_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
             """INSERT INTO leads (id, nome, empresa, telefone, cidade, plano, potencia, concessionaria, observacoes, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (lead_id, lead.nome, lead.empresa, lead.telefone, lead.cidade, lead.plano,
              lead.potencia, lead.concessionaria, lead.observacoes, "novo", created_at)
         )
@@ -386,58 +414,61 @@ async def get_leads(
     data_fim: Optional[str] = None,
     username: str = Depends(verify_token)
 ):
-    async with aiosqlite.connect(DB_PATH) as db:
-        query = "SELECT id, nome, empresa, telefone, cidade, plano, potencia, concessionaria, observacoes, status, created_at FROM leads WHERE 1=1"
-        params = []
-        
-        if status:
-            query += " AND status = ?"
-            params.append(status)
-        if plano:
-            query += " AND plano = ?"
-            params.append(plano)
-        if data_inicio:
-            query += " AND created_at >= ?"
-            params.append(data_inicio)
-        if data_fim:
-            query += " AND created_at <= ?"
-            params.append(data_fim)
-        
-        query += " ORDER BY created_at DESC"
-        
-        cursor = await db.execute(query, params)
-        rows = await cursor.fetchall()
-        leads = []
-        for row in rows:
-            leads.append({
-                "id": row[0],
-                "nome": row[1],
-                "empresa": row[2],
-                "telefone": row[3],
-                "cidade": row[4],
-                "plano": row[5],
-                "potencia": row[6],
-                "concessionaria": row[7],
-                "observacoes": row[8],
-                "status": row[9],
-                "created_at": row[10]
-            })
-        return leads
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            query = "SELECT id, nome, empresa, telefone, cidade, plano, potencia, concessionaria, observacoes, status, created_at FROM leads WHERE 1=1"
+            params = []
+
+            if status:
+                query += " AND status = %s"
+                params.append(status)
+            if plano:
+                query += " AND plano = %s"
+                params.append(plano)
+            if data_inicio:
+                query += " AND created_at >= %s"
+                params.append(data_inicio)
+            if data_fim:
+                query += " AND created_at <= %s"
+                params.append(data_fim)
+
+            query += " ORDER BY created_at DESC"
+
+            await cursor.execute(query, params)
+            rows = await cursor.fetchall()
+            leads = []
+            for row in rows:
+                leads.append({
+                    "id": row[0],
+                    "nome": row[1],
+                    "empresa": row[2],
+                    "telefone": row[3],
+                    "cidade": row[4],
+                    "plano": row[5],
+                    "potencia": row[6],
+                    "concessionaria": row[7],
+                    "observacoes": row[8],
+                    "status": row[9],
+                    "created_at": row[10]
+                })
+            return leads
 
 @api_router.patch("/admin/leads/{lead_id}")
 async def update_lead_status(lead_id: str, data: LeadStatusUpdate, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("UPDATE leads SET status = ? WHERE id = ?", (data.status, lead_id))
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("UPDATE leads SET status = %s WHERE id = %s", (data.status, lead_id))
         await db.commit()
         return {"message": "Status atualizado"}
 
 @api_router.get("/admin/leads/export")
 async def export_leads_csv(username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "SELECT id, nome, empresa, telefone, cidade, plano, potencia, concessionaria, observacoes, status, created_at FROM leads ORDER BY created_at DESC"
-        )
-        rows = await cursor.fetchall()
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "SELECT id, nome, empresa, telefone, cidade, plano, potencia, concessionaria, observacoes, status, created_at FROM leads ORDER BY created_at DESC"
+            )
+            rows = await cursor.fetchall()
         
         csv_content = "ID,Nome,Empresa,Telefone,Cidade,Plano,Potência,Concessionária,Observações,Status,Data\n"
         for row in rows:
@@ -449,11 +480,12 @@ async def export_leads_csv(username: str = Depends(verify_token)):
 @api_router.post("/admin/plans", response_model=PlanResponse)
 async def create_plan(plan: PlanCreate, username: str = Depends(verify_token)):
     plan_id = str(uuid.uuid4())
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT INTO plans (id, nome, preco, descricao, ordem, destaque, badge) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (plan_id, plan.nome, plan.preco, json.dumps(plan.descricao), plan.ordem, int(plan.destaque), plan.badge)
-        )
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO plans (id, nome, preco, descricao, ordem, destaque, badge) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (plan_id, plan.nome, plan.preco, json.dumps(plan.descricao), plan.ordem, int(plan.destaque), plan.badge)
+            )
         await db.commit()
     return {
         "id": plan_id,
@@ -467,11 +499,12 @@ async def create_plan(plan: PlanCreate, username: str = Depends(verify_token)):
 
 @api_router.put("/admin/plans/{plan_id}", response_model=PlanResponse)
 async def update_plan(plan_id: str, plan: PlanCreate, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE plans SET nome = ?, preco = ?, descricao = ?, ordem = ?, destaque = ?, badge = ? WHERE id = ?",
-            (plan.nome, plan.preco, json.dumps(plan.descricao), plan.ordem, int(plan.destaque), plan.badge, plan_id)
-        )
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "UPDATE plans SET nome = %s, preco = %s, descricao = %s, ordem = %s, destaque = %s, badge = %s WHERE id = %s",
+                (plan.nome, plan.preco, json.dumps(plan.descricao), plan.ordem, int(plan.destaque), plan.badge, plan_id)
+            )
         await db.commit()
     return {
         "id": plan_id,
@@ -485,29 +518,32 @@ async def update_plan(plan_id: str, plan: PlanCreate, username: str = Depends(ve
 
 @api_router.delete("/admin/plans/{plan_id}")
 async def delete_plan(plan_id: str, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM plans WHERE id = ?", (plan_id,))
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("DELETE FROM plans WHERE id = %s", (plan_id,))
         await db.commit()
         return {"message": "Plano excluído"}
 
 # Admin content management
 @api_router.put("/admin/content")
 async def update_content(data: ContentUpdate, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM content WHERE key = ?", (data.key,))
-        count = await cursor.fetchone()
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT COUNT(*) FROM content WHERE `key` = %s", (data.key,))
+            count = await cursor.fetchone()
         if count[0] > 0:
-            await db.execute("UPDATE content SET value = ? WHERE key = ?", (data.value, data.key))
+            await cursor.execute("UPDATE content SET value = %s WHERE `key` = %s", (data.value, data.key))
         else:
-            await db.execute("INSERT INTO content (key, value) VALUES (?, ?)", (data.key, data.value))
+            await cursor.execute("INSERT INTO content (`key`, value) VALUES (%s, %s)", (data.key, data.value))
         await db.commit()
         return {"message": "Conteúdo atualizado"}
 
 @api_router.put("/admin/whatsapp")
 async def update_whatsapp(data: WhatsAppConfig, username: str = Depends(verify_token)):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("UPDATE content SET value = ? WHERE key = ?", (data.numero, "whatsapp_numero"))
-        await db.execute("UPDATE content SET value = ? WHERE key = ?", (data.mensagem_template, "whatsapp_mensagem"))
+    async with db_pool.acquire() as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("UPDATE content SET value = %s WHERE `key` = %s", (data.numero, "whatsapp_numero"))
+            await cursor.execute("UPDATE content SET value = %s WHERE `key` = %s", (data.mensagem_template, "whatsapp_mensagem"))
         await db.commit()
         return {"message": "WhatsApp atualizado"}
 
@@ -531,8 +567,28 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup():
+    global db_pool
+    mysql_config = get_mysql_config()
+    if not mysql_config["user"] or not mysql_config["password"] or not mysql_config["db"]:
+        raise RuntimeError("Defina MYSQL_USER, MYSQL_PASSWORD e MYSQL_DATABASE para iniciar a API")
+
+    db_pool = await aiomysql.create_pool(
+        host=mysql_config["host"],
+        port=mysql_config["port"],
+        user=mysql_config["user"],
+        password=mysql_config["password"],
+        db=mysql_config["db"],
+        minsize=1,
+        maxsize=10,
+        autocommit=False,
+        ssl=get_mysql_ssl_context(),
+    )
     await init_db()
 
 @app.on_event("shutdown")
 async def shutdown():
-    pass
+    global db_pool
+    if db_pool is not None:
+        db_pool.close()
+        await db_pool.wait_closed()
+        db_pool = None
