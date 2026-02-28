@@ -1,0 +1,148 @@
+{
+  "project_name": "Alluz Energia - Solar After-Sales",
+  "design_philosophy": {
+    "identity": "E1: The Anti-AI Designer",
+    "core_principles": [
+      "Clarity over Decoration: Every pixel must serve the conversion goal.",
+      "Trust through Precision: Solar is technical; the design must feel engineered, not just painted.",
+      "Golden Warmth: Use yellow to evoke the sun and energy, but anchor it with stark white and deep charcoal to avoid the 'cheap course seller' look.",
+      "Human Connection: Use real imagery of homes and people, not abstract 3D solar blobs."
+    ],
+    "mood": "Professional, Bright, Efficient, Secure.",
+    "theme": "LIGHT MODE ONLY"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Plus Jakarta Sans, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight leading-tight",
+      "h2": "text-4xl md:text-5xl font-semibold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-medium",
+      "body_lg": "text-lg md:text-xl leading-relaxed text-gray-600",
+      "body": "text-base leading-relaxed text-gray-600",
+      "caption": "text-sm text-gray-500 uppercase tracking-widest font-semibold"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "base": "#F59E0B",
+        "hover": "#D97706",
+        "light": "#FFFBEB",
+        "description": "Golden Yellow - Used for primary CTAs and highlights. Energetic but grounded."
+      },
+      "secondary": {
+        "base": "#1F2937",
+        "light": "#374151",
+        "description": "Deep Charcoal - Used for headings and strong borders. Provides the 'engineered' contrast."
+      },
+      "background": {
+        "default": "#FFFFFF",
+        "subtle": "#F9FAFB",
+        "card": "#FFFFFF",
+        "description": "Pure White for clarity. Very subtle gray for section separation."
+      },
+      "border": {
+        "default": "#E5E7EB",
+        "active": "#F59E0B",
+        "description": "Soft gray borders that turn golden on hover."
+      },
+      "status": {
+        "success": "#10B981",
+        "error": "#EF4444",
+        "warning": "#F59E0B"
+      }
+    },
+    "gradients": {
+      "hero_overlay": "linear-gradient(180deg, rgba(255,255,255,0) 0%, #FFFFFF 100%)",
+      "subtle_glow": "radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.1) 0%, rgba(255, 255, 255, 0) 70%)"
+    }
+  },
+  "layout": {
+    "container": {
+      "max_width": "max-w-7xl",
+      "padding": "px-4 md:px-8",
+      "center": "mx-auto"
+    },
+    "spacing": {
+      "section_gap": "py-24 md:py-32",
+      "element_gap": "gap-8"
+    },
+    "grid_system": {
+      "features": "grid grid-cols-1 md:grid-cols-3 gap-8",
+      "bento_hero": "grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold py-4 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 text-lg",
+      "secondary": "bg-white border-2 border-gray-200 hover:border-[#F59E0B] text-gray-800 hover:text-[#F59E0B] font-medium py-3 px-6 rounded-lg transition-all duration-300",
+      "ghost": "text-gray-600 hover:text-[#F59E0B] font-medium transition-colors"
+    },
+    "cards": {
+      "feature": "bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#F59E0B]/30 transition-all duration-300 group",
+      "pricing": "bg-white p-8 rounded-2xl border border-gray-200 shadow-lg relative overflow-hidden flex flex-col h-full hover:scale-[1.02] transition-transform duration-300"
+    },
+    "inputs": {
+      "default": "w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/50 focus:border-[#F59E0B] transition-all",
+      "label": "block text-sm font-medium text-gray-700 mb-2"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "soft": "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]",
+      "glow": "shadow-[0_0_30px_-5px_rgba(245,158,11,0.3)]"
+    },
+    "borders": {
+      "smooth": "rounded-2xl",
+      "sharp_inner": "rounded-lg"
+    },
+    "textures": {
+      "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E\")"
+    }
+  },
+  "assets": {
+    "images": [
+      {
+        "category": "Hero",
+        "description": "Modern house roof with solar panels against a clear blue sky. Suggests cleanliness and efficiency.",
+        "url": "https://images.unsplash.com/photo-1761571740780-d9149a88b759?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2ODh8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBob3VzZSUyMHdpdGglMjBzb2xhciUyMHBhbmVsc3xlbnwwfHx8fDE3NzIzMDMxMDR8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Modern solar roof"
+      },
+      {
+        "category": "Problem/Service",
+        "description": "Close up of solar panels or technical equipment, representing the need for maintenance.",
+        "url": "https://images.unsplash.com/photo-1556610274-f64ee53ba18c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxzb2xhciUyMHBhbmVscyUyMG1vZGVybiUyMHJvb2YlMjBibHVlJTIwc2t5fGVufDB8fHx8MTc3MjMwMzA5MXww&ixlib=rb-4.1.0&q=85",
+        "alt": "Solar equipment detail"
+      },
+      {
+        "category": "Trust/Family",
+        "description": "Happy family outdoors, implying peace of mind from resolved energy issues.",
+        "url": "https://images.unsplash.com/photo-1769806399181-f04bb541122b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwzfHxmYW1pbHklMjBpbiUyMGZyb250JTIwb2YlMjBtb2Rlcm4lMjBob3VzZXxlbnwwfHx8fDE3NzIzMDMxMDN8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Happy family home"
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "suggestions": {
+        "monitoring": "Activity",
+        "safety": "ShieldCheck",
+        "savings": "PiggyBank",
+        "whatsapp": "MessageCircle"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Implement the 'Manrope' font for headings and 'Plus Jakarta Sans' for body. Use Google Fonts.",
+    "The primary CTA MUST open a Shadcn Dialog (Modal) containing the Lead Form.",
+    "The Lead Form must NOT pay. It must collect Name, Email, Phone, and redirect to WhatsApp API link with a pre-filled message.",
+    "Use the 'Bento Grid' layout for the 'How it Works' section to avoid a boring list.",
+    "The Pricing Cards must be prominent. The middle card (R$ 79,90) should be highlighted as 'Best Value' with a golden border and scale transform.",
+    "Admin Dashboard: keep it clean. Sidebar navigation + large data table for leads. Use Shadcn Table component.",
+    "Do NOT use dark mode toggles. Force the app to stay in Light Mode as per constraints.",
+    "Ensure the WhatsApp redirect URL format is: `https://wa.me/55[NUMBER]?text=[ENCODED_MESSAGE]`."
+  ]
+}
