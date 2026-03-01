@@ -1,0 +1,64 @@
+name: Deploy frontend to Cloud Run
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: us-central1
+  REPO: oem-alluz
+  SERVICE: oem-alluz-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          [ -n "${{ secrets.GCP_PROJECT_ID }}" ] || (echo "Missing secret: GCP_PROJECT_ID" && exit 1)
+          [ -n "${{ secrets.GCP_WIF_PROVIDER }}" ] || (echo "Missing secret: GCP_WIF_PROVIDER" && exit 1)
+          [ -n "${{ secrets.GCP_SA_EMAIL }}" ] || (echo "Missing secret: GCP_SA_EMAIL" && exit 1)
+          echo "Secrets OK"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ github.sha }}"
+          docker build \
+            --build-arg REACT_APP_BACKEND_URL=https://oem-alluz-backend-259463642730.us-central1.run.app \
+            -t "$IMAGE" ./frontend
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ env.SERVICE }}" \
+            --image "$IMAGE" \
+            --region "${{ env.REGION }}" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account "${{ secrets.GCP_SA_EMAIL }}"
