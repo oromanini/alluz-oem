@@ -28,19 +28,18 @@ jobs:
 
       - name: Validate required secrets
         run: |
-          test -n "${{ secrets.GCP_PROJECT_ID }}"
-          test -n "${{ secrets.GCP_WIF_PROVIDER }}"
-          test -n "${{ secrets.GCP_DEPLOYER_SA_EMAIL }}"
-          test -n "${{ secrets.GCP_RUN_SERVICE_ACCOUNT }}"
-          test -n "${{ secrets.MONGO_URL }}"
-          test -n "${{ secrets.DB_NAME }}"
+          [ -n "${{ secrets.GCP_PROJECT_ID }}" ] || (echo "Missing secret: GCP_PROJECT_ID" && exit 1)
+          [ -n "${{ secrets.GCP_WIF_PROVIDER }}" ] || (echo "Missing secret: GCP_WIF_PROVIDER" && exit 1)
+          [ -n "${{ secrets.GCP_SA_EMAIL }}" ] || (echo "Missing secret: GCP_SA_EMAIL" && exit 1)
+          [ -n "${{ secrets.MONGO_URL }}" ] || (echo "Missing secret: MONGO_URL" && exit 1)
+          [ -n "${{ secrets.DB_NAME }}" ] || (echo "Missing secret: DB_NAME" && exit 1)
           echo "Secrets OK"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOYER_SA_EMAIL }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -63,5 +62,5 @@ jobs:
             --project "${{ secrets.GCP_PROJECT_ID }}" \
             --platform managed \
             --allow-unauthenticated \
-            --service-account "${{ secrets.GCP_RUN_SERVICE_ACCOUNT }}" \
-            --set-env-vars "MONGO_URL=${{ secrets.MONGO_URL }},DB_NAME=${{ secrets.DB_NAME }}"
+            --service-account "${{ secrets.GCP_SA_EMAIL }}" \
+            --set-env-vars "MONGO_URL=${{ secrets.MONGO_URL }},MONGO_DB_NAME=${{ secrets.DB_NAME }},CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
