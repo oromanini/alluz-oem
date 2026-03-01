@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL =
+  process.env.REACT_APP_BACKEND_URL ||
+  'https://oem-alluz-backend-259463642730.us-central1.run.app';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
