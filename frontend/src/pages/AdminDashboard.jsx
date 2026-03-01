@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Sun, LogOut, Users, FileText, Settings, LayoutDashboard, 
+  LogOut, Users, FileText, Settings, LayoutDashboard, 
   Download, Filter, Search, Edit2, Trash2, Plus, Save, X,
   ChevronDown, Check, MessageCircle, RefreshCw
 } from 'lucide-react';
@@ -17,7 +17,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { authApi, contentApi, plansApi, leadsApi } from '@/lib/api';
+import { authApi, contentApi, plansApi, leadsApi, faqApi } from '@/lib/api';
+
+const parseFaqItems = (faqJson) => {
+  try {
+    const parsed = JSON.parse(faqJson || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item, index) => ({
+      id: item.id || `${Date.now()}-${index}`,
+      pergunta: item.pergunta || '',
+      resposta: item.resposta || ''
+    }));
+  } catch {
+    return [];
+  }
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -36,6 +50,9 @@ const AdminDashboard = () => {
   const [content, setContent] = useState({});
   const [editingContent, setEditingContent] = useState(null);
   const [contentValue, setContentValue] = useState('');
+  const [faqItems, setFaqItems] = useState([]);
+  const [faqForm, setFaqForm] = useState({ pergunta: '', resposta: '' });
+  const [editingFaqId, setEditingFaqId] = useState(null);
 
   // Plans state
   const [plans, setPlans] = useState([]);
@@ -92,6 +109,8 @@ const AdminDashboard = () => {
       setLeads(leadsRes.data);
       setContent(contentRes.data);
       setPlans(plansRes.data);
+      const faqRes = await faqApi.getAll();
+      setFaqItems(faqRes.data.length ? faqRes.data : parseFaqItems(contentRes.data.faq_itens));
       setWhatsappConfig({
         numero: contentRes.data.whatsapp_numero || '',
         mensagem_template: contentRes.data.whatsapp_mensagem || ''
@@ -173,6 +192,52 @@ const AdminDashboard = () => {
       toast.success('WhatsApp atualizado');
     } catch (error) {
       toast.error('Erro ao salvar');
+    }
+  };
+
+  const handleSubmitFaq = async () => {
+    if (!faqForm.pergunta.trim() || !faqForm.resposta.trim()) {
+      toast.error('Preencha pergunta e resposta');
+      return;
+    }
+
+    try {
+      if (editingFaqId) {
+        const response = await faqApi.update(editingFaqId, faqForm);
+        setFaqItems(prev => prev.map(item => item.id === editingFaqId ? response.data : item));
+        toast.success('FAQ atualizada');
+      } else {
+        const response = await faqApi.create(faqForm);
+        setFaqItems(prev => [...prev, response.data]);
+        toast.success('FAQ adicionada');
+      }
+
+      setFaqForm({ pergunta: '', resposta: '' });
+      setEditingFaqId(null);
+    } catch {
+      toast.error('Erro ao salvar FAQ');
+    }
+  };
+
+  const handleEditFaq = (item) => {
+
+    setEditingFaqId(item.id);
+    setFaqForm({ pergunta: item.pergunta, resposta: item.resposta });
+  };
+
+  const handleDeleteFaq = async (faqId) => {
+    if (!confirm('Tem certeza que deseja excluir esta pergunta?')) return;
+
+    try {
+      await faqApi.delete(faqId);
+      setFaqItems(prev => prev.filter(item => item.id !== faqId));
+      if (editingFaqId === faqId) {
+        setEditingFaqId(null);
+        setFaqForm({ pergunta: '', resposta: '' });
+      }
+      toast.success('FAQ removida');
+    } catch {
+      toast.error('Erro ao excluir FAQ');
     }
   };
 
@@ -301,9 +366,7 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center">
-                <Sun className="w-6 h-6 text-white" />
-              </div>
+              <img src="/alluz-logo.svg" alt="Alluz Energia" className="w-10 h-10 rounded-full object-cover" />
               <div>
                 <h1 className="font-bold text-gray-900">Admin Alluz</h1>
                 <p className="text-xs text-gray-500">Painel Administrativo</p>
@@ -402,6 +465,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="conteudo" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Conteúdo
+            </TabsTrigger>
+            <TabsTrigger value="faq" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              FAQ
             </TabsTrigger>
             <TabsTrigger value="whatsapp" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -675,6 +742,86 @@ const AdminDashboard = () => {
                       )}
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+
+          {/* FAQ Tab */}
+          <TabsContent value="faq">
+            <Card>
+              <CardHeader>
+                <CardTitle>FAQ</CardTitle>
+                <CardDescription>Crie, edite e remova perguntas frequentes</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 border border-gray-200 rounded-lg p-4">
+                  <div>
+                    <Label className="font-medium text-gray-700">Pergunta</Label>
+                    <Input
+                      value={faqForm.pergunta}
+                      onChange={(e) => setFaqForm(prev => ({ ...prev, pergunta: e.target.value }))}
+                      placeholder="Digite a pergunta"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="font-medium text-gray-700">Resposta</Label>
+                    <Textarea
+                      value={faqForm.resposta}
+                      onChange={(e) => setFaqForm(prev => ({ ...prev, resposta: e.target.value }))}
+                      placeholder="Digite a resposta"
+                      rows={4}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSubmitFaq} className="bg-amber-500 hover:bg-amber-600">
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingFaqId ? 'Salvar FAQ' : 'Adicionar FAQ'}
+                    </Button>
+                    {editingFaqId && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditingFaqId(null);
+                          setFaqForm({ pergunta: '', resposta: '' });
+                        }}
+                      >
+                        Cancelar edição
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {faqItems.map((item) => (
+                    <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <p className="font-semibold text-gray-900">{item.pergunta}</p>
+                          <p className="text-sm text-gray-600">{item.resposta}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditFaq(item)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFaq(item.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {faqItems.length === 0 && (
+                    <p className="text-sm text-gray-500">Nenhuma pergunta cadastrada.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

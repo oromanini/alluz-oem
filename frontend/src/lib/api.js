@@ -53,6 +53,14 @@ export const plansApi = {
   delete: (id) => api.delete(`/admin/plans/${id}`),
 };
 
+
+export const faqApi = {
+  getAll: () => api.get('/admin/faq'),
+  create: (faq) => api.post('/admin/faq', faq),
+  update: (id, faq) => api.put(`/admin/faq/${id}`, faq),
+  delete: (id) => api.delete(`/admin/faq/${id}`),
+};
+
 export const leadsApi = {
   create: (lead) => api.post('/leads', lead),
   getAll: (params) => api.get('/admin/leads', { params }),
