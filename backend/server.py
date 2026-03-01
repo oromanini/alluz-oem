@@ -605,10 +605,25 @@ async def update_whatsapp(data: WhatsAppConfig, username: str = Depends(verify_t
 # Include the router
 app.include_router(api_router)
 
+
+def _parse_cors_origins(value: str | None) -> list[str]:
+    if not value:
+        return ["*"]
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+
+cors_origins = _parse_cors_origins(os.environ.get("CORS_ORIGINS"))
+cors_origin_regex = os.environ.get(
+    "CORS_ORIGIN_REGEX",
+    r"^https:\/\/([a-zA-Z0-9-]+\.)*alluzenergia\.com(\.br)?$|^https:\/\/([a-zA-Z0-9-]+\.)*run\.app$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$",
+)
+allow_credentials = "*" not in cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_credentials=allow_credentials,
+    allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
