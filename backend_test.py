@@ -6,7 +6,7 @@ from datetime import datetime
 class AlluzAPITester:
     def __init__(self):
         # Use the public endpoint from frontend .env
-        self.base_url = "https://pos-venda-energia.preview.emergentagent.com/api"
+        self.base_url = "http://localhost:8001/api"
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0

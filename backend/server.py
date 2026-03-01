@@ -106,6 +106,20 @@ class WhatsAppConfig(BaseModel):
     numero: str
     mensagem_template: str
 
+
+class FAQItem(BaseModel):
+    id: str
+    pergunta: str
+    resposta: str
+
+class FAQCreate(BaseModel):
+    pergunta: str
+    resposta: str
+
+class FAQUpdate(BaseModel):
+    pergunta: str
+    resposta: str
+
 # Database initialization
 async def init_db():
     global mongo_client, mongo_db
@@ -200,12 +214,12 @@ async def init_db():
                 ]),
                 "faq_titulo": "Perguntas Frequentes",
                 "faq_itens": json.dumps([
-                    {"pergunta": "Isso serve para demanda contratada?", "resposta": "Sim, nosso acompanhamento atende tanto sistemas residenciais quanto comerciais com demanda contratada."},
-                    {"pergunta": "Até quantos kWp?", "resposta": "Atendemos sistemas de até 75 kWp."},
-                    {"pergunta": "Preciso ter acesso ao app?", "resposta": "Idealmente sim, mas podemos trabalhar com as faturas enviadas mensalmente caso não tenha acesso ao app do inversor."},
-                    {"pergunta": "Como vocês conferem créditos/excedente?", "resposta": "Analisamos suas faturas de energia mensalmente e comparamos com a geração do sistema para verificar se os créditos estão sendo aplicados corretamente."},
-                    {"pergunta": "Se der problema, vocês atendem?", "resposta": "Oferecemos orientação remota. Para serviços presenciais, fazemos orçamento à parte com desconto conforme seu plano."},
-                    {"pergunta": "Posso cancelar quando quiser?", "resposta": "Sim! Nossos planos são mensais e sem fidelidade. Você pode cancelar a qualquer momento."}
+                    {"id": str(uuid.uuid4()), "pergunta": "Isso serve para demanda contratada?", "resposta": "Sim, nosso acompanhamento atende tanto sistemas residenciais quanto comerciais com demanda contratada."},
+                    {"id": str(uuid.uuid4()), "pergunta": "Até quantos kWp?", "resposta": "Atendemos sistemas de até 75 kWp."},
+                    {"id": str(uuid.uuid4()), "pergunta": "Preciso ter acesso ao app?", "resposta": "Idealmente sim, mas podemos trabalhar com as faturas enviadas mensalmente caso não tenha acesso ao app do inversor."},
+                    {"id": str(uuid.uuid4()), "pergunta": "Como vocês conferem créditos/excedente?", "resposta": "Analisamos suas faturas de energia mensalmente e comparamos com a geração do sistema para verificar se os créditos estão sendo aplicados corretamente."},
+                    {"id": str(uuid.uuid4()), "pergunta": "Se der problema, vocês atendem?", "resposta": "Oferecemos orientação remota. Para serviços presenciais, fazemos orçamento à parte com desconto conforme seu plano."},
+                    {"id": str(uuid.uuid4()), "pergunta": "Posso cancelar quando quiser?", "resposta": "Sim! Nossos planos são mensais e sem fidelidade. Você pode cancelar a qualquer momento."}
                 ]),
                 "whatsapp_numero": "5544988574869",
                 "whatsapp_mensagem": "Olá! Sou {nome} da empresa {empresa}. Telefone: {telefone}, Cidade: {cidade}. Tenho interesse no {plano}. Potência: {kwp}. Concessionária: {concessionaria}. Observações: {obs}. Quero assinar o plano de acompanhamento.",
@@ -457,6 +471,118 @@ async def delete_plan(plan_id: str, username: str = Depends(verify_token)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Plano não encontrado")
     return {"message": "Plano excluído"}
+
+
+# Admin FAQ management
+@api_router.get("/admin/faq", response_model=List[FAQItem])
+async def get_faq_items(username: str = Depends(verify_token)):
+    db = get_db()
+    faq_doc = await db.content.find_one({"key": "faq_itens"}, {"_id": 0, "value": 1})
+    faq_items = []
+
+    if faq_doc and faq_doc.get("value"):
+        try:
+            parsed = json.loads(faq_doc["value"])
+            if isinstance(parsed, list):
+                for index, item in enumerate(parsed):
+                    faq_items.append(
+                        {
+                            "id": item.get("id") or str(index),
+                            "pergunta": item.get("pergunta", ""),
+                            "resposta": item.get("resposta", ""),
+                        }
+                    )
+        except json.JSONDecodeError:
+            pass
+
+    return faq_items
+
+
+@api_router.post("/admin/faq", response_model=FAQItem)
+async def create_faq_item(data: FAQCreate, username: str = Depends(verify_token)):
+    db = get_db()
+    faq_doc = await db.content.find_one({"key": "faq_itens"}, {"_id": 0, "value": 1})
+    items = []
+
+    if faq_doc and faq_doc.get("value"):
+        try:
+            parsed = json.loads(faq_doc["value"])
+            if isinstance(parsed, list):
+                items = parsed
+        except json.JSONDecodeError:
+            pass
+
+    new_item = {"id": str(uuid.uuid4()), "pergunta": data.pergunta, "resposta": data.resposta}
+    items.append(new_item)
+
+    await db.content.update_one(
+        {"key": "faq_itens"},
+        {"$set": {"value": json.dumps(items)}},
+        upsert=True,
+    )
+
+    return new_item
+
+
+@api_router.put("/admin/faq/{faq_id}", response_model=FAQItem)
+async def update_faq_item(faq_id: str, data: FAQUpdate, username: str = Depends(verify_token)):
+    db = get_db()
+    faq_doc = await db.content.find_one({"key": "faq_itens"}, {"_id": 0, "value": 1})
+    items = []
+
+    if faq_doc and faq_doc.get("value"):
+        try:
+            parsed = json.loads(faq_doc["value"])
+            if isinstance(parsed, list):
+                items = parsed
+        except json.JSONDecodeError:
+            pass
+
+    updated_item = None
+    for item in items:
+        if item.get("id") == faq_id:
+            item["pergunta"] = data.pergunta
+            item["resposta"] = data.resposta
+            updated_item = item
+            break
+
+    if updated_item is None:
+        raise HTTPException(status_code=404, detail="FAQ não encontrada")
+
+    await db.content.update_one(
+        {"key": "faq_itens"},
+        {"$set": {"value": json.dumps(items)}},
+        upsert=True,
+    )
+
+    return updated_item
+
+
+@api_router.delete("/admin/faq/{faq_id}")
+async def delete_faq_item(faq_id: str, username: str = Depends(verify_token)):
+    db = get_db()
+    faq_doc = await db.content.find_one({"key": "faq_itens"}, {"_id": 0, "value": 1})
+    items = []
+
+    if faq_doc and faq_doc.get("value"):
+        try:
+            parsed = json.loads(faq_doc["value"])
+            if isinstance(parsed, list):
+                items = parsed
+        except json.JSONDecodeError:
+            pass
+
+    filtered_items = [item for item in items if item.get("id") != faq_id]
+    if len(filtered_items) == len(items):
+        raise HTTPException(status_code=404, detail="FAQ não encontrada")
+
+    await db.content.update_one(
+        {"key": "faq_itens"},
+        {"$set": {"value": json.dumps(filtered_items)}},
+        upsert=True,
+    )
+
+    return {"message": "FAQ removida"}
 
 # Admin content management
 @api_router.put("/admin/content")

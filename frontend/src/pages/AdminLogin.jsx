@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Lock, Eye, EyeOff } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,9 +46,7 @@ const AdminLogin = () => {
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center">
-              <Sun className="w-10 h-10 text-white" />
-            </div>
+            <img src="/alluz-logo.svg" alt="Alluz Energia" className="w-16 h-16 rounded-full object-cover" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">Admin Alluz</CardTitle>
           <CardDescription className="text-gray-500">

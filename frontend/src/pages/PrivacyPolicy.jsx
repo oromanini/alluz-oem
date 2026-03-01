@@ -1,4 +1,3 @@
-import { Sun } from 'lucide-react';
 
 const PrivacyPolicy = () => {
   return (
@@ -7,9 +6,7 @@ const PrivacyPolicy = () => {
       <header className="bg-white border-b border-gray-100 py-4">
         <div className="max-w-4xl mx-auto px-4">
           <a href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center">
-              <Sun className="w-6 h-6 text-white" />
-            </div>
+            <img src="/alluz-logo.svg" alt="Alluz Energia" className="w-10 h-10 rounded-full object-cover" />
             <span className="font-bold text-xl text-gray-900">Alluz Energia</span>
           </a>
         </div>

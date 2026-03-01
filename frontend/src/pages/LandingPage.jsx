@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sun, Menu, X, Phone, Mail, MapPin, ChevronRight, Check, AlertCircle, MessageCircle, Activity, ShieldCheck, Clock, Zap, ArrowRight, ExternalLink } from 'lucide-react';
+import { Menu, X, Phone, Mail, MapPin, ChevronRight, Check, AlertCircle, MessageCircle, Activity, ShieldCheck, Clock, Zap, ArrowRight, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,9 +160,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             <a href="/" className="flex items-center gap-2 group" data-testid="logo-link">
-              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Sun className="w-6 h-6 text-white" />
-              </div>
+              <img src="/alluz-logo.svg" alt="Alluz Energia" className="w-10 h-10 rounded-full object-cover group-hover:scale-105 transition-transform" />
               <span className="font-bold text-xl text-gray-900 hidden sm:block">Alluz Energia</span>
             </a>
 
@@ -180,6 +178,12 @@ const LandingPage = () => {
               >
                 Quero assinar
               </Button>
+              <a
+                href="/admin"
+                className="hidden sm:inline-flex items-center px-3 py-2 text-sm border border-gray-200 rounded-md text-gray-700 hover:border-amber-500 hover:text-amber-600 transition-colors"
+              >
+                Área admin
+              </a>
               <button 
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 text-gray-600"
@@ -205,6 +209,13 @@ const LandingPage = () => {
               >
                 Quero assinar
               </Button>
+              <a
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-gray-600 hover:text-amber-500 py-2 font-medium"
+              >
+                Área admin
+              </a>
             </nav>
           </div>
         )}
@@ -342,7 +353,7 @@ const LandingPage = () => {
             <span className="text-amber-500 font-semibold text-sm uppercase tracking-wider mb-4 block">Planos</span>
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">Escolha o plano ideal para você</h2>
             <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-              Experimente o <span className="text-amber-500 font-medium">plano básico por 14 dias</span> e descubra como aumentar 
+              Ganhe a <span className="text-amber-500 font-medium">primeira análise grátis</span> e descubra como aumentar 
               instantaneamente as suas conversões!
             </p>
           </div>
@@ -437,7 +448,7 @@ const LandingPage = () => {
                         }`}
                         data-testid={`plan-cta-${index}`}
                       >
-                        {isHighlighted ? 'Iniciar hoje' : 'Testar Grátis'}
+                        {isHighlighted ? 'Iniciar hoje' : 'Primeira análise grátis'}
                         <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </div>
@@ -535,9 +546,7 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center">
-                  <Sun className="w-6 h-6 text-white" />
-                </div>
+                <img src="/alluz-logo.svg" alt="Alluz Energia" className="w-10 h-10 rounded-full object-cover" />
                 <span className="font-bold text-xl">Alluz Energia</span>
               </div>
               <p className="text-gray-400 text-sm">
