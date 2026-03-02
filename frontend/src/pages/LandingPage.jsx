@@ -588,7 +588,7 @@ const LandingPage = () => {
 
       {/* Lead Form Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto bg-white opacity-100">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-gray-900">Quero assinar</DialogTitle>
           </DialogHeader>
