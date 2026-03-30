@@ -63,6 +63,19 @@ export const faqApi = {
 
 export const leadsApi = {
   create: (lead) => api.post('/leads', lead),
+  createTasting: ({ nome, email, contaLuzArquivo, monitoramentoArquivo }) => {
+    const formData = new FormData();
+    formData.append('nome', nome);
+    formData.append('email', email);
+    formData.append('conta_luz_arquivo', contaLuzArquivo);
+    formData.append('monitoramento_arquivo', monitoramentoArquivo);
+
+    return api.post('/leads/form', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   getAll: (params) => api.get('/admin/leads', { params }),
   updateStatus: (id, status) => api.patch(`/admin/leads/${id}`, { status }),
   exportCsv: () => api.get('/admin/leads/export'),

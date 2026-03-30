@@ -1,9 +1,10 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
+import base64
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -68,13 +69,20 @@ class LeadCreate(BaseModel):
 class LeadResponse(BaseModel):
     id: str
     nome: str
-    empresa: str
-    telefone: str
-    cidade: str
-    plano: str
-    potencia: Optional[str]
-    concessionaria: Optional[str]
-    observacoes: Optional[str]
+    email: Optional[str] = None
+    empresa: Optional[str] = None
+    telefone: Optional[str] = None
+    cidade: Optional[str] = None
+    plano: Optional[str] = None
+    potencia: Optional[str] = None
+    concessionaria: Optional[str] = None
+    observacoes: Optional[str] = None
+    conta_luz_arquivo_nome: Optional[str] = None
+    conta_luz_arquivo_tipo: Optional[str] = None
+    conta_luz_arquivo_base64: Optional[str] = None
+    monitoramento_arquivo_nome: Optional[str] = None
+    monitoramento_arquivo_tipo: Optional[str] = None
+    monitoramento_arquivo_base64: Optional[str] = None
     status: str
     created_at: str
 
@@ -353,6 +361,76 @@ async def create_lead(lead: LeadCreate, request: Request):
         "created_at": created_at
     }
 
+
+@api_router.post("/leads/form", response_model=LeadResponse)
+async def create_tasting_lead(
+    request: Request,
+    nome: str = Form(...),
+    email: str = Form(...),
+    conta_luz_arquivo: UploadFile = File(...),
+    monitoramento_arquivo: UploadFile = File(...),
+):
+    client_ip = request.client.host
+    if not check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Muitas requisições. Tente novamente em 1 minuto.")
+
+    conta_luz_bytes = await conta_luz_arquivo.read()
+    monitoramento_bytes = await monitoramento_arquivo.read()
+
+    if not conta_luz_bytes or not monitoramento_bytes:
+        raise HTTPException(status_code=400, detail="Envie os dois arquivos obrigatórios.")
+
+    lead_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    conta_luz_base64 = base64.b64encode(conta_luz_bytes).decode("utf-8")
+    monitoramento_base64 = base64.b64encode(monitoramento_bytes).decode("utf-8")
+
+    db = get_db()
+    await db.leads.insert_one(
+        {
+            "id": lead_id,
+            "nome": nome,
+            "email": email,
+            "empresa": "",
+            "telefone": "",
+            "cidade": "",
+            "plano": "Degustação gratuita",
+            "potencia": None,
+            "concessionaria": None,
+            "observacoes": None,
+            "conta_luz_arquivo_nome": conta_luz_arquivo.filename,
+            "conta_luz_arquivo_tipo": conta_luz_arquivo.content_type,
+            "conta_luz_arquivo_base64": conta_luz_base64,
+            "monitoramento_arquivo_nome": monitoramento_arquivo.filename,
+            "monitoramento_arquivo_tipo": monitoramento_arquivo.content_type,
+            "monitoramento_arquivo_base64": monitoramento_base64,
+            "status": "novo",
+            "created_at": created_at,
+        }
+    )
+
+    return {
+        "id": lead_id,
+        "nome": nome,
+        "email": email,
+        "empresa": "",
+        "telefone": "",
+        "cidade": "",
+        "plano": "Degustação gratuita",
+        "potencia": None,
+        "concessionaria": None,
+        "observacoes": None,
+        "conta_luz_arquivo_nome": conta_luz_arquivo.filename,
+        "conta_luz_arquivo_tipo": conta_luz_arquivo.content_type,
+        "conta_luz_arquivo_base64": conta_luz_base64,
+        "monitoramento_arquivo_nome": monitoramento_arquivo.filename,
+        "monitoramento_arquivo_tipo": monitoramento_arquivo.content_type,
+        "monitoramento_arquivo_base64": monitoramento_base64,
+        "status": "novo",
+        "created_at": created_at,
+    }
+
 # Admin routes
 
 @api_router.get("/admin/leads", response_model=List[LeadResponse])
@@ -392,11 +470,12 @@ async def update_lead_status(lead_id: str, data: LeadStatusUpdate, username: str
 @api_router.get("/admin/leads/export")
 async def export_leads_csv(username: str = Depends(verify_token)):
     db = get_db()
-    csv_content = "ID,Nome,Empresa,Telefone,Cidade,Plano,Potência,Concessionária,Observações,Status,Data\n"
+    csv_content = "ID,Nome,Email,Empresa,Telefone,Cidade,Plano,Potência,Concessionária,Observações,Conta de Luz (arquivo),Monitoramento (arquivo),Status,Data\n"
     async for row in db.leads.find({}, {"_id": 0}).sort("created_at", DESCENDING):
         cols = [
             row.get("id"),
             row.get("nome"),
+            row.get("email"),
             row.get("empresa"),
             row.get("telefone"),
             row.get("cidade"),
@@ -404,6 +483,8 @@ async def export_leads_csv(username: str = Depends(verify_token)):
             row.get("potencia"),
             row.get("concessionaria"),
             row.get("observacoes"),
+            row.get("conta_luz_arquivo_nome"),
+            row.get("monitoramento_arquivo_nome"),
             row.get("status"),
             row.get("created_at"),
         ]
