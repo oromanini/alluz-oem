@@ -5,6 +5,7 @@ import LandingPage from "@/pages/LandingPage";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import FormLandingPage from "@/pages/FormLandingPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/privacidade" element={<PrivacyPolicy />} />
+          <Route path="/form" element={<FormLandingPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" richColors />
