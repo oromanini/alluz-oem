@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   LogOut, Users, FileText, Settings, LayoutDashboard, 
   Download, Filter, Search, Edit2, Trash2, Plus, Save, X,
-  ChevronDown, Check, MessageCircle, RefreshCw
+  ChevronDown, Check, MessageCircle, RefreshCw, Eye, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,13 @@ const AdminDashboard = () => {
   const [leads, setLeads] = useState([]);
   const [leadFilters, setLeadFilters] = useState({ status: '', plano: '', search: '' });
   const [filteredLeads, setFilteredLeads] = useState([]);
+  const [filePreview, setFilePreview] = useState({
+    open: false,
+    title: '',
+    fileName: '',
+    fileUrl: '',
+    fileType: ''
+  });
 
   // Content state
   const [content, setContent] = useState({});
@@ -136,6 +143,7 @@ const AdminDashboard = () => {
       const search = leadFilters.search.toLowerCase();
       filtered = filtered.filter(l => 
         l.nome.toLowerCase().includes(search) ||
+        (l.email || '').toLowerCase().includes(search) ||
         l.empresa.toLowerCase().includes(search) ||
         l.telefone.includes(search) ||
         l.cidade.toLowerCase().includes(search)
@@ -173,6 +181,38 @@ const AdminDashboard = () => {
     } catch (error) {
       toast.error('Erro ao exportar');
     }
+  };
+
+  const getFileUrl = (lead, key) => {
+    const fileType = lead[`${key}_arquivo_tipo`];
+    const fileBase64 = lead[`${key}_arquivo_base64`];
+    if (!fileType || !fileBase64) return null;
+    return `data:${fileType};base64,${fileBase64}`;
+  };
+
+  const handleOpenFilePreview = (lead, key, title) => {
+    const fileUrl = getFileUrl(lead, key);
+    if (!fileUrl) {
+      toast.error('Arquivo não encontrado para este lead');
+      return;
+    }
+
+    setFilePreview({
+      open: true,
+      title,
+      fileName: lead[`${key}_arquivo_nome`] || 'arquivo',
+      fileUrl,
+      fileType: lead[`${key}_arquivo_tipo`] || ''
+    });
+  };
+
+  const handleOpenMonitoringPrint = (lead) => {
+    const fileUrl = getFileUrl(lead, 'monitoramento');
+    if (!fileUrl) {
+      toast.error('Print do monitoramento não encontrado');
+      return;
+    }
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleSaveContent = async (key, value) => {
@@ -555,10 +595,12 @@ const AdminDashboard = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nome</TableHead>
+                        <TableHead>Email</TableHead>
                         <TableHead>Empresa</TableHead>
                         <TableHead>Telefone</TableHead>
                         <TableHead>Cidade</TableHead>
                         <TableHead>Plano</TableHead>
+                        <TableHead>Arquivos</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Data</TableHead>
                       </TableRow>
@@ -567,19 +609,48 @@ const AdminDashboard = () => {
                       {filteredLeads.map((lead) => (
                         <TableRow key={lead.id}>
                           <TableCell className="font-medium">{lead.nome}</TableCell>
+                          <TableCell>{lead.email || '-'}</TableCell>
                           <TableCell>{lead.empresa}</TableCell>
                           <TableCell>
-                            <a 
-                              href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-amber-600 hover:underline"
-                            >
-                              {lead.telefone}
-                            </a>
+                            {lead.telefone ? (
+                              <a
+                                href={`https://wa.me/${lead.telefone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-amber-600 hover:underline"
+                              >
+                                {lead.telefone}
+                              </a>
+                            ) : (
+                              '-'
+                            )}
                           </TableCell>
                           <TableCell>{lead.cidade}</TableCell>
                           <TableCell>{lead.plano}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2 min-w-[180px]">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="justify-start"
+                                onClick={() => handleOpenFilePreview(lead, 'conta_luz', 'Conta de luz')}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Ver conta de luz
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="justify-start"
+                                onClick={() => handleOpenMonitoringPrint(lead)}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Abrir monitoramento
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <Select 
                               value={lead.status} 
@@ -605,7 +676,7 @@ const AdminDashboard = () => {
                       ))}
                       {filteredLeads.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                          <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                             Nenhum lead encontrado
                           </TableCell>
                         </TableRow>
@@ -616,6 +687,35 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <Dialog
+            open={filePreview.open}
+            onOpenChange={(open) => setFilePreview((prev) => ({ ...prev, open }))}
+          >
+            <DialogContent className="sm:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>{filePreview.title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                {filePreview.fileName && (
+                  <p className="text-sm text-gray-500">{filePreview.fileName}</p>
+                )}
+                {filePreview.fileType.startsWith('image/') ? (
+                  <img
+                    src={filePreview.fileUrl}
+                    alt={filePreview.title}
+                    className="w-full max-h-[70vh] object-contain rounded-md border"
+                  />
+                ) : (
+                  <iframe
+                    title={filePreview.title}
+                    src={filePreview.fileUrl}
+                    className="w-full h-[70vh] rounded-md border"
+                  />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Plans Tab */}
           <TabsContent value="planos">
